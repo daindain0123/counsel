@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>내 손으로 터뜨리는 스트레스 대나무숲 🐼🍃</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-grad-1: #071712;
+            --bg-grad-2: #10271f;
+            --accent-green: #52be80;
+            --accent-light: #a2d9ce;
+            --accent-yellow: #f9e79f;
+            --accent-pink: #f5b7b1;
+            --accent-orange: #f5b041;
+            --text-light: #f4f6f6;
+            --panel-bg: rgba(12, 32, 25, 0.88);
+            --border-glass: rgba(82, 190, 128, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 30%, var(--bg-grad-2) 0%, var(--bg-grad-1) 100%);
+            color: var(--text-light);
+            position: relative;
+        }
+
+        /* 🖱️ 마우스 추적 커스텀 포인터 */
+        #customToolCursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.05s ease-out;
+            display: none;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+        }
+
+        #customToolCursor.swing {
+            animation: toolSwing 0.15s ease-in-out;
+        }
+
+        @keyframes toolSwing {
+            0% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+            50% { transform: translate(-50%, -50%) rotate(-35deg) scale(1.3); }
+            100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+        }
+
+        .ambient-light {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, rgba(82, 190, 128, 0.15) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 1;
+            filter: blur(50px);
+            transition: background 0.5s;
+        }
+
+        body.fever-mode .ambient-light {
+            background: radial-gradient(circle, rgba(245, 176, 65, 0.3) 0%, rgba(0,0,0,0) 70%);
+        }
+
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            cursor: none;
+        }
+
+        header {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 92%;
+            max-width: 880px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            padding: 10px 18px;
+            border-radius: 20px;
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+        }
+
+        .title-group h1 {
+            font-family: 'Jua', sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent-green);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .title-group p {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        .top-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .icon-btn, select {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-glass);
+            color: #fff;
+            padding: 7px 11px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        select option {
+            background: #071712;
+            color: #fff;
+        }
+
+        .icon-btn:hover, .icon-btn.active {
+            background: rgba(82, 190, 128, 0.25);
+            border-color: var(--accent-green);
+            color: var(--accent-light);
+        }
+
+        .combo-hud {
+            position: absolute;
+            top: 80px;
+            left: 25px;
+            z-index: 9;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .combo-text {
+            font-family: 'Jua', sans-serif;
+            font-size: 1.8rem;
+            color: var(--accent-yellow);
+            text-shadow: 0 0 10px rgba(249, 231, 159, 0.5);
+            opacity: 0;
+            transform: scale(0.7);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .combo-text.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .fever-badge {
+            font-family: 'Jua', sans-serif;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #f5b041, #e74c3c);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            box-shadow: 0 0 15px rgba(245, 176, 65, 0.7);
+            display: none;
+            animation: pulseFever 0.6s infinite alternate;
+        }
+
+        /* 🏆 실시간 칭호 표시 UI */
+        .title-badge {
+            font-size: 0.8rem;
+            background: rgba(82, 190, 128, 0.2);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-light);
+            padding: 3px 8px;
+            border-radius: 8px;
+            margin-left: 6px;
+        }
+
+        @keyframes pulseFever {
+            from { transform: scale(1); }
+            to { transform: scale(1.08); }
+        }
+
+        .empathy-banner {
+            position: absolute;
+            top: 85px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-15px);
+            z-index: 9;
+            background: rgba(18, 45, 36, 0.92);
+            border: 1px solid var(--accent-green);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            color: var(--accent-yellow);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s ease;
+            text-align: center;
+            max-width: 85%;
+        }
+
+        .empathy-banner.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .panda-companion {
+            position: absolute;
+            bottom: 110px;
+            right: 25px;
+            z-index: 9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            transition: transform 0.3s;
+        }
+
+        .panda-bubble {
+            background: rgba(255, 255, 255, 0.92);
+            color: #0b1d19;
+            padding: 6px 12px;
+            border-radius: 14px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            margin-bottom: 6px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .panda-bubble.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .panda-avatar {
+            font-size: 3rem;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4));
+            transition: transform 0.2s;
+        }
+
+        .panda-avatar.bounce {
+            animation: pandaBounce 0.4s ease;
+        }
+
+        @keyframes pandaBounce {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.3) rotate(-10deg); }
+        }
+
+        .input-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            width: 92%;
+            max-width: 720px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            padding: 14px;
+            border-radius: 24px;
+            border: 1px solid var(--border-glass);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toolbar-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-selector, .emotion-selector {
+            display: flex;
+            gap: 5px;
+        }
+
+        .tool-btn, .emotion-btn {
+            padding: 5px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.25);
+            color: #aaa;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn.selected {
+            background: rgba(245, 176, 65, 0.25);
+            color: var(--accent-yellow);
+            border-color: var(--accent-orange);
+            font-weight: bold;
+        }
+
+        .emotion-btn.selected {
+            background: rgba(82, 190, 128, 0.25);
+            color: var(--accent-light);
+            border-color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        .input-box {
+            display: flex;
+            gap: 8px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glass);
+            border-radius: 14px;
+            padding: 11px 15px;
+            color: #fff;
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-green);
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #27ae60, #52be80);
+            border: none;
+            color: #0b1d19;
+            font-family: 'Jua', sans-serif;
+            font-size: 0.95rem;
+            padding: 0 16px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+            white-space: nowrap;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.03);
+            filter: brightness(1.1);
+        }
+
+        .action-btn.vortex {
+            background: linear-gradient(135deg, #e74c3c, #ec7063);
+            color: #fff;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(7, 23, 18, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            padding: 26px;
+            width: 90%;
+            max-width: 460px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            text-align: center;
+            transform: translateY(20px);
+            transition: transform 0.4s ease;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: translateY(0);
+        }
+
+        .modal-card h2 {
+            font-family: 'Jua', sans-serif;
+            color: var(--accent-green);
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .modal-card p {
+            line-height: 1.5;
+            font-size: 0.92rem;
+            margin-bottom: 18px;
+            opacity: 0.9;
+        }
+
+        .modal-close-btn {
+            background: var(--accent-green);
+            color: #0b1d19;
+            border: none;
+            padding: 10px 22px;
+            font-family: 'Jua', sans-serif;
+            font-size: 0.95rem;
+            border-radius: 12px;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .diary-list {
+            text-align: left;
+            margin: 12px 0;
+            max-height: 160px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .diary-item {
+            background: rgba(255,255,255,0.05);
+            padding: 9px 12px;
+            border-radius: 10px;
+            border-left: 4px solid var(--accent-green);
+            font-size: 0.83rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cheer-card-container {
+            position: absolute;
+            top: 75px;
+            right: 20px;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            max-width: 250px;
+        }
+
+        .cheer-card {
+            background: rgba(14, 34, 28, 0.85);
+            border: 1px solid var(--border-glass);
+            backdrop-filter: blur(5px);
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 0.82rem;
+            color: var(--accent-yellow);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            animation: fadeInRight 0.5s ease forwards;
+            pointer-events: auto;
+        }
+
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (max-width: 650px) {
+            header { padding: 8px 12px; }
+            .title-group h1 { font-size: 0.95rem; }
+            .title-group p { display: none; }
+            .input-container { bottom: 12px; padding: 10px; }
+            .toolbar-row { flex-direction: column; align-items: stretch; gap: 6px; }
+            .panda-companion { bottom: 170px; right: 15px; }
+            .cheer-card-container { top: 70px; right: 10px; left: 10px; max-width: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="customToolCursor">📍</div>
+
+    <div class="ambient-light"></div>
+    <canvas id="gameCanvas"></canvas>
+
+    <header>
+        <div class="title-group">
+            <h1>🎋 스트레스 대나무숲 🐼 <span class="title-badge" id="currentTitleBadge">마음 비우기 초보 🌿</span></h1>
+            <p>드래그로 싹둑 슬라이스하고 신나게 고민을 파괴하세요!</p>
+        </div>
+        <div class="top-controls">
+            <select id="soundPackSelect" title="타격음 선택">
+                <option value="pop">🔊 뿅뿅 사운드</option>
+                <option value="bubble">🫧 뽁뽁이 사운드</option>
+                <option value="heavy">🥁 퐁당 사운드</option>
+                <option value="funny">🤡 통통 사운드</option>
+            </select>
+            <button class="icon-btn" id="bgmToggleBtn">🎵 ASMR</button>
+            <button class="icon-btn" id="diaryBtn">📝 일기장</button>
+        </div>
+    </header>
+
+    <div class="combo-hud">
+        <div class="combo-text" id="comboText">2 COMBO!</div>
+        <div class="fever-badge" id="feverBadge">🔥 FEVER MODE!</div>
+    </div>
+
+    <div class="empathy-banner" id="empathyBanner">대나무숲이 당신의 이야기를 듣고 있어요... 🌿</div>
+
+    <div class="panda-companion">
+        <div class="panda-bubble" id="pandaBubble">토닥토닥! 드래그로 싹둑 베어봐!</div>
+        <div class="panda-avatar" id="pandaAvatar">🐼</div>
+    </div>
+
+    <div class="cheer-card-container" id="cheerCardContainer"></div>
+
+    <div class="input-container">
+        <div class="toolbar-row">
+            <div class="tool-selector">
+                <div class="tool-btn selected" data-tool="needle" data-icon="📍">📍 바늘</div>
+                <div class="tool-btn" data-tool="blade" data-icon="🍃">🍃 대나무 칼(슬라이스)</div>
+                <div class="tool-btn" data-tool="hammer" data-icon="🔨">🔨 망치(범위)</div>
+                <div class="tool-btn" data-tool="laser" data-icon="⚡">⚡ 레이저</div>
+            </div>
+            <div class="emotion-selector">
+                <div class="emotion-btn selected" data-emotion="angry" style="color: #f5b7b1;">🔥 화남</div>
+                <div class="emotion-btn" data-emotion="sad" style="color: #a9cce3;">😔 우울</div>
+                <div class="emotion-btn" data-emotion="anxious" style="color: #d7bde2;">💦 불안</div>
+                <div class="emotion-btn" data-emotion="etc" style="color: #f9e79f;">💬 기타</div>
+            </div>
+        </div>
+        <div class="input-box">
+            <input type="text" id="stressInput" placeholder="고민을 입력해보세요 (분열 버블 💥 & 시한폭탄 💣도 등장해요!)" maxlength="100">
+            <button class="action-btn" id="createBtn">고민 띄우기</button>
+            <button class="action-btn vortex" id="vortexBtn" title="회오리 한방 소각">🌪️</button>
+        </div>
+    </div>
+
+    <!-- 완료 모달 -->
+    <div class="modal-overlay" id="clearModal">
+        <div class="modal-card">
+            <h2>🎉 모든 스트레스 정화 완료!</h2>
+            <p id="modalQuote">"멋지게 고민을 정화해냈어요! 오늘 밤은 마음 가볍고 편안하게 쉬세요 💚"</p>
+            
+            <div style="margin-bottom: 12px; text-align: left;">
+                <label style="font-size:0.78rem; opacity:0.8; display:block; margin-bottom:4px;">💌 나에게 남기는 한 줄 응원</label>
+                <input type="text" id="cheerInput" placeholder="예: '나 자신 최고! 내일도 파이팅!'" style="width:100%;">
+            </div>
+
+            <button class="action-btn" id="saveCheerBtn" style="width: 100%;">응원 남기고 마무리</button>
+        </div>
+    </div>
+
+    <!-- 황금 보물 모달 -->
+    <div class="modal-overlay" id="fortuneModal">
+        <div class="modal-card" style="border-color: var(--accent-yellow);">
+            <h2 style="color: var(--accent-yellow);">🎁 황금 포춘 보물 발견!</h2>
+            <p id="fortuneText" style="font-size: 1.05rem; font-weight: bold; color: var(--accent-yellow); margin: 15px 0;"></p>
+            <button class="modal-close-btn" id="closeFortuneBtn" style="background: var(--accent-yellow);">행운 받기</button>
+        </div>
+    </div>
+
+    <!-- 일기장 모달 -->
+    <div class="modal-overlay" id="diaryModal">
+        <div class="modal-card">
+            <h2>📝 대나무숲 정화 일기</h2>
+            <p style="margin-bottom: 10px; font-size:0.82rem;">오늘 정화한 고민 및 해금 칭호 기록입니다.</p>
+            
+            <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:12px; margin-bottom:12px; font-size:0.85rem; display:flex; justify-content:space-around;">
+                <div>🌿 총 정화 고민: <strong id="totalPoppedCount" style="color:var(--accent-green);">0</strong>개</div>
+                <div>🏆 획득 칭호: <strong id="diaryTitleText" style="color:var(--accent-yellow);">초보</strong></div>
+            </div>
+
+            <div class="diary-list" id="diaryList"></div>
+
+            <button class="modal-close-btn" id="closeDiaryBtn">닫기</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const customCursor = document.getElementById('customToolCursor');
+
+        let audioCtx = null;
+        let isBgmPlaying = false;
+        let bgmGainNode = null;
+        let selectedSoundPack = 'pop';
+
+        let currentToolIcon = '📍';
+        let isMouseDown = false;
+        let slicePath = [];
+
+        window.addEventListener('mousemove', (e) => {
+            customCursor.style.display = 'block';
+            customCursor.style.left = e.clientX + 'px';
+            customCursor.style.top = e.clientY + 'px';
+
+            if (isMouseDown) {
+                slicePath.push({ x: e.clientX, y: e.clientY, life: 1.0 });
+                if (selectedTool === 'blade') {
+                    handleSliceIntersection(e.clientX, e.clientY);
+                }
+            }
+        });
+
+        window.addEventListener('mousedown', () => isMouseDown = true);
+        window.addEventListener('mouseup', () => isMouseDown = false);
+
+        document.addEventListener('mouseleave', () => {
+            customCursor.style.display = 'none';
+            isMouseDown = false;
+        });
+
+        function updateCursorIcon(icon) {
+            currentToolIcon = icon;
+            customCursor.textContent = icon;
+        }
+
+        function triggerToolAnimation() {
+            customCursor.classList.add('swing');
+            setTimeout(() => customCursor.classList.remove('swing'), 150);
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playPopSound(emotion = 'angry', radius = 40, type = 'normal') {
+            if (!audioCtx) return;
+
+            if (type === 'fortune') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
+                osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.16);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+                return;
+            } else if (type === 'bomb') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+                return;
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const now = audioCtx.currentTime;
+
+            let baseFreq = 300 + (80 - radius) * 4;
+            if (isFever) baseFreq += 150;
+
+            if (selectedSoundPack === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(baseFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.1, now + 0.12);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+            } else if (selectedSoundPack === 'bubble') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(baseFreq * 1.5, now);
+                osc.frequency.linearRampToValueAtTime(baseFreq * 0.4, now + 0.08);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            } else if (selectedSoundPack === 'heavy') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(120 + (80 - radius), now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.18);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+            } else if (selectedSoundPack === 'funny') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(600, now + 0.06);
+                osc.frequency.linearRampToValueAtTime(150, now + 0.14);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+            }
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(now + 0.2);
+        }
+
+        function playVortexSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.8);
+            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.8);
+        }
+
+        function toggleBGM() {
+            initAudio();
+            const btn = document.getElementById('bgmToggleBtn');
+
+            if (isBgmPlaying) {
+                if (bgmGainNode) bgmGainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+                isBgmPlaying = false;
+                btn.textContent = '🎵 ASMR';
+                btn.classList.remove('active');
+            } else {
+                bgmGainNode = audioCtx.createGain();
+                bgmGainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+                bgmGainNode.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 2);
+                bgmGainNode.connect(audioCtx.destination);
+
+                const bufferSize = audioCtx.sampleRate * 2;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                const whiteNoise = audioCtx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(250, audioCtx.currentTime);
+
+                whiteNoise.connect(filter);
+                filter.connect(bgmGainNode);
+                whiteNoise.start();
+
+                isBgmPlaying = true;
+                btn.textContent = '🎵 ASMR ON';
+                btn.classList.add('active');
+            }
+        }
+
+        document.getElementById('soundPackSelect').addEventListener('change', (e) => {
+            selectedSoundPack = e.target.value;
+            initAudio();
+            playPopSound('angry', 40);
+        });
+
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initFireflies();
+        }
+        window.addEventListener('resize', resize);
+
+        const emotionColors = {
+            angry: { fill: 'rgba(245, 183, 177, 0.45)', stroke: '#f5b7b1' },
+            sad: { fill: 'rgba(169, 204, 227, 0.45)', stroke: '#a9cce3' },
+            anxious: { fill: 'rgba(215, 189, 226, 0.45)', stroke: '#d7bde2' },
+            etc: { fill: 'rgba(249, 231, 159, 0.45)', stroke: '#f9e79f' }
+        };
+
+        const fortunes = [
+            "🍀 오늘 당신에겐 뜻밖의 기분 좋은 행운이 찾아올 거예요!",
+            "✨ 모든 일이 생각보다 훨씬 더 매끄럽게 잘 풀릴 거예요.",
+            "🎁 지친 나에게 달콤한 디저트나 작은 선물을 선물해 보세요!",
+            "🌟 당신의 밝은 미소가 주변 사람들에게도 행복을 줄 거예요."
+        ];
+
+        const pandaMessages = [
+            "토닥토닥! 드래그로 싹둑 베어봐!",
+            "시원하게 날려버리자! 팡!",
+            "오늘도 넌 최고야! 💚",
+            "스트레스 전부 소각 완료!",
+            "나이스 콤보! 칭호 해금 가자!"
+        ];
+
+        /* === 🎆 숲속 반딧불이(개똥벌레) 배경 입자 === */
+        let fireflies = [];
+        function initFireflies() {
+            fireflies = [];
+            for (let i = 0; i < 25; i++) {
+                fireflies.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 2 + 1,
+                    alpha: Math.random(),
+                    speedAlpha: Math.random() * 0.02 + 0.005,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5
+                });
+            }
+        }
+
+        function updateAndDrawFireflies() {
+            for (let f of fireflies) {
+                f.x += f.vx;
+                f.y += f.vy;
+                f.alpha += f.speedAlpha;
+
+                if (f.alpha > 1 || f.alpha < 0) f.speedAlpha *= -1;
+                if (f.x < 0 || f.x > width) f.vx *= -1;
+                if (f.y < 0 || f.y > height) f.vy *= -1;
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, f.alpha * 0.7);
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#f9e79f';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#f9e79f';
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function getPersonalizedEmpathy(text) {
+            const t = text.toLowerCase();
+            if (t.includes('공부') || t.includes('시험') || t.includes('성적') || t.includes('과제') || t.includes('학교')) {
+                return "매일 잘 해내고 싶은 마음 때문에 압박감이 컸겠어요. 당신은 충분히 최선을 다하고 있어요 📖✨";
+            }
+            if (t.includes('친구') || t.includes('사람') || t.includes('관계') || t.includes('싸움') || t.includes('말')) {
+                return "사람 마음에 상처받는 일이 가장 아프죠. 너무 깊이 마음에 담아두지 말아요 🫂💬";
+            }
+            if (t.includes('피곤') || t.includes('지침') || t.includes('힘들') || t.includes('쉬고')) {
+                return "몸도 마음도 많이 지쳤군요. 지금은 그 어떤 것보다 휴식이 먼저예요 🍵🌿";
+            }
+            if (t.includes('걱정') || t.includes('미래') || t.includes('불안') || t.includes('어쩌')) {
+                return "아직 오지 않은 내일 때문에 너무 불안해하지 마세요. 당신은 잘 헤쳐나갈 거예요 💫";
+            }
+            if (t.includes('화') || t.includes('짜증') || t.includes('미워') || t.includes('싫어')) {
+                return "화가 나는 건 너무 당연해요! 여기에 마음껏 털어놓고 시원하게 날려버려요 🔥🍃";
+            }
+            return "그 소중한 마음, 대나무숲과 판다가 따뜻하게 품어줄게요 🌿";
+        }
+
+        let selectedEmotion = 'angry';
+        let selectedTool = 'needle';
+        let bubbles = [];
+        let particles = [];
+        let isVortexActive = false;
+        let vortexTimer = 0;
+
+        let comboCount = 0;
+        let lastPopTime = 0;
+        let isFever = false;
+        let feverTimer = null;
+
+        let totalPoppedStat = 0;
+
+        class Bubble {
+            constructor(text, emotion, type = 'normal', parentRadius = 0, x = null, y = null) {
+                this.text = text;
+                this.emotion = emotion;
+                this.type = type; // 'normal', 'split', 'bomb', 'fortune'
+                this.color = (type === 'fortune') ? { fill: 'rgba(245, 176, 65, 0.65)', stroke: '#f5b041' } :
+                             (type === 'bomb') ? { fill: 'rgba(231, 76, 60, 0.55)', stroke: '#e74c3c' } : emotionColors[emotion];
+                
+                if (type === 'fortune') this.radius = 55;
+                else if (type === 'bomb') this.radius = 65;
+                else if (parentRadius > 0) this.radius = Math.max(parentRadius * 0.5, 30);
+                else this.radius = Math.min(Math.max(text.length * 5 + 30, 45), 110);
+
+                this.x = x !== null ? x : Math.random() * (width - this.radius * 2) + this.radius;
+                this.y = y !== null ? y : height + this.radius + Math.random() * 40;
+                
+                this.vx = (Math.random() - 0.5) * 1.4;
+                this.vy = - (Math.random() * 0.9 + 0.6);
+                this.pulse = Math.random() * Math.PI;
+                this.popping = false;
+                this.hue = Math.random() * 360;
+
+                // 시한폭탄 카운트다운
+                this.bombTimer = 7;
+                if (type === 'bomb') {
+                    this.timerInterval = setInterval(() => {
+                        this.bombTimer--;
+                        if (this.bombTimer <= 0) {
+                            clearInterval(this.timerInterval);
+                            this.pop();
+                        }
+                    }, 1000);
+                }
+            }
+
+            update() {
+                if (isVortexActive) {
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    const dx = centerX - this.x;
+                    const dy = centerY - this.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    this.x += dx * 0.08;
+                    this.y += dy * 0.08;
+
+                    if (dist < 40) {
+                        this.pop();
+                    }
+                } else {
+                    this.pulse += 0.03;
+                    this.x += this.vx + Math.sin(this.pulse) * 0.4;
+                    this.y += this.vy;
+
+                    if (this.x - this.radius < 0 || this.x + this.radius > width) this.vx *= -1;
+                    if (this.y + this.radius < 0) this.y = height + this.radius;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+
+                if (isFever) {
+                    this.hue = (this.hue + 2) % 360;
+                    ctx.fillStyle = `hsla(${this.hue}, 80%, 65%, 0.6)`;
+                    ctx.strokeStyle = `hsl(${this.hue}, 90%, 75%)`;
+                } else {
+                    ctx.fillStyle = this.color.fill;
+                    ctx.strokeStyle = this.color.stroke;
+                }
+                
+                ctx.fill();
+                ctx.lineWidth = (this.type === 'fortune' || this.type === 'bomb') ? 3 : 1.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(-this.radius * 0.3, -this.radius * 0.3, this.radius * 0.25, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                const fontSize = Math.max(11, Math.min(15, this.radius * 0.25));
+                ctx.font = `bold ${fontSize}px 'Gowun Dodum'`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                if (this.type === 'fortune') {
+                    ctx.font = `bold ${fontSize * 1.2}px 'Gowun Dodum'`;
+                    ctx.fillText("🎁 황금 보물", 0, 0);
+                } else if (this.type === 'bomb') {
+                    ctx.font = `bold ${fontSize * 1.3}px 'Jua'`;
+                    ctx.fillText(`💣 ${this.bombTimer}s`, 0, -6);
+                    ctx.font = `10px 'Gowun Dodum'`;
+                    ctx.fillText("폭발 카운트!", 0, 12);
+                } else {
+                    wrapText(ctx, this.text, 0, 0, this.radius * 1.6, fontSize * 1.3);
+                }
+
+                ctx.restore();
+            }
+
+            pop() {
+                if (this.popping) return;
+                this.popping = true;
+
+                if (this.timerInterval) clearInterval(this.timerInterval);
+                
+                playPopSound(this.emotion, this.radius, this.type);
+                if (this.type !== 'fortune') {
+                    saveToDiary(this.text || "시한폭탄 고민 소각", this.emotion);
+                    totalPoppedStat++;
+                    checkTitleUnlock();
+                }
+
+                // 거대 고민 분열 버블 처리
+                if (this.radius > 80 && this.type === 'normal') {
+                    for (let k = 0; k < 3; k++) {
+                        bubbles.push(new Bubble(this.text, this.emotion, 'split', this.radius, this.x + (k - 1) * 20, this.y));
+                    }
+                }
+
+                const pColor = (this.type === 'fortune') ? '#f5b041' : (this.type === 'bomb' ? '#e74c3c' : (isFever ? `hsl(${this.hue}, 90%, 75%)` : this.color.stroke));
+                const count = (this.type === 'bomb') ? 35 : (this.type === 'fortune' ? 25 : 14);
+                for (let i = 0; i < count; i++) {
+                    particles.push(new Particle(this.x, this.y, pColor));
+                }
+
+                if (this.type === 'fortune') {
+                    showFortuneModal();
+                } else {
+                    registerCombo();
+                    triggerPandaReaction();
+                }
+            }
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            let words = text.split('');
+            let line = '';
+            let lines = [];
+
+            for (let n = 0; n < words.length; n++) {
+                let testLine = line + words[n];
+                let metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n];
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            let startY = y - ((lines.length - 1) * lineHeight) / 2;
+            for (let k = 0; k < lines.length; k++) {
+                context.fillText(lines[k], x, startY + (k * lineHeight));
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.radius = Math.random() * 3.5 + 1.5;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 6 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.03 + 0.015;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.08;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        /* === 🏆 힐링 칭호 시스템 === */
+        function checkTitleUnlock() {
+            const badge = document.getElementById('currentTitleBadge');
+            const diaryTitle = document.getElementById('diaryTitleText');
+
+            let titleStr = "마음 비우기 초보 🌿";
+            if (totalPoppedStat >= 30) titleStr = "대나무숲의 전설 👑";
+            else if (totalPoppedStat >= 15) titleStr = "스트레스 파괴왕 💥";
+            else if (totalPoppedStat >= 5) titleStr = "마음 정화 숙련자 ✨";
+
+            badge.textContent = titleStr;
+            diaryTitle.textContent = titleStr;
+        }
+
+        function registerCombo() {
+            const now = Date.now();
+            if (now - lastPopTime < 1200) {
+                comboCount++;
+            } else {
+                comboCount = 1;
+            }
+            lastPopTime = now;
+
+            const comboEl = document.getElementById('comboText');
+            if (comboCount >= 2) {
+                comboEl.textContent = `${comboCount} COMBO!🔥`;
+                comboEl.classList.add('show');
+                setTimeout(() => comboEl.classList.remove('show'), 800);
+            }
+
+            if (comboCount >= 5 && !isFever) {
+                startFeverMode();
+            }
+        }
+
+        function startFeverMode() {
+            isFever = true;
+            document.body.classList.add('fever-mode');
+            document.getElementById('feverBadge').style.display = 'inline-block';
+            
+            if (feverTimer) clearTimeout(feverTimer);
+            feverTimer = setTimeout(() => {
+                isFever = false;
+                document.body.classList.remove('fever-mode');
+                document.getElementById('feverBadge').style.display = 'none';
+            }, 5000);
+        }
+
+        function triggerPandaReaction() {
+            const avatar = document.getElementById('pandaAvatar');
+            const bubble = document.getElementById('pandaBubble');
+
+            avatar.classList.add('bounce');
+            setTimeout(() => avatar.classList.remove('bounce'), 400);
+
+            if (Math.random() < 0.6) {
+                const randomMsg = pandaMessages[Math.floor(Math.random() * pandaMessages.length)];
+                bubble.textContent = randomMsg;
+                bubble.classList.add('show');
+                setTimeout(() => bubble.classList.remove('show'), 2000);
+            }
+        }
+
+        function drawSlicePath() {
+            if (slicePath.length < 2) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(slicePath[0].x, slicePath[0].y);
+            for (let i = 1; i < slicePath.length; i++) {
+                ctx.lineTo(slicePath[i].x, slicePath[i].y);
+            }
+            ctx.strokeStyle = '#52be80';
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#a2d9ce';
+            ctx.stroke();
+            ctx.restore();
+
+            for (let i = slicePath.length - 1; i >= 0; i--) {
+                slicePath[i].life -= 0.08;
+                if (slicePath[i].life <= 0) slicePath.splice(i, 1);
+            }
+        }
+
+        function handleSliceIntersection(x, y) {
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
+                if (Math.hypot(b.x - x, b.y - y) < b.radius) {
+                    b.pop();
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            updateAndDrawFireflies();
+            drawSlicePath();
+
+            if (isVortexActive) {
+                vortexTimer += 0.06;
+                ctx.save();
+                ctx.translate(width / 2, height / 2);
+                ctx.rotate(vortexTimer);
+                ctx.beginPath();
+                for (let i = 0; i < 3; i++) {
+                    ctx.arc(0, 0, 30 + i * 35, i, i + Math.PI);
+                }
+                ctx.strokeStyle = 'rgba(231, 76, 60, 0.45)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                bubbles[i].update();
+                bubbles[i].draw();
+
+                if (bubbles[i].popping) {
+                    bubbles.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            if (isVortexActive && bubbles.length === 0) {
+                isVortexActive = false;
+                setTimeout(triggerClearSequence, 200);
+            }
+
+            requestAnimationFrame(animate);
+        }
+        
+        resize();
+        animate();
+
+        document.querySelectorAll('.emotion-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                initAudio();
+                document.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                selectedEmotion = e.target.dataset.emotion;
+            });
+        });
+
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                initAudio();
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                selectedTool = e.target.dataset.tool;
+                updateCursorIcon(e.target.dataset.icon);
+            });
+        });
+
+        function showEmpathyBanner(text) {
+            const banner = document.getElementById('empathyBanner');
+            banner.textContent = getPersonalizedEmpathy(text);
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 4500);
+        }
+
+        function createBubbleFromInput() {
+            initAudio();
+            const input = document.getElementById('stressInput');
+            const text = input.value.trim();
+
+            if (text === '') return;
+
+            bubbles.push(new Bubble(text, selectedEmotion));
+
+            // 확률적으로 시한폭탄 또는 황금 보물 출현
+            const rand = Math.random();
+            if (rand < 0.25) {
+                setTimeout(() => bubbles.push(new Bubble("", "etc", 'bomb')), 300);
+            } else if (rand < 0.45) {
+                setTimeout(() => bubbles.push(new Bubble("", "etc", 'fortune')), 400);
+            }
+
+            showEmpathyBanner(text);
+            input.value = '';
+        }
+
+        document.getElementById('createBtn').addEventListener('click', createBubbleFromInput);
+        document.getElementById('stressInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') createBubbleFromInput();
+        });
+
+        function handlePop(clientX, clientY) {
+            initAudio();
+            triggerToolAnimation();
+
+            const previousCount = bubbles.length;
+
+            if (selectedTool === 'needle' || selectedTool === 'blade') {
+                for (let i = bubbles.length - 1; i >= 0; i--) {
+                    const b = bubbles[i];
+                    if (Math.hypot(b.x - clientX, b.y - clientY) < b.radius) {
+                        b.pop();
+                        break;
+                    }
+                }
+            } else if (selectedTool === 'hammer') {
+                for (let i = bubbles.length - 1; i >= 0; i--) {
+                    const b = bubbles[i];
+                    if (Math.hypot(b.x - clientX, b.y - clientY) < b.radius + 75) {
+                        b.pop();
+                    }
+                }
+            } else if (selectedTool === 'laser') {
+                for (let i = bubbles.length - 1; i >= 0; i--) {
+                    const b = bubbles[i];
+                    if (Math.abs(b.x - clientX) < b.radius + 15) {
+                        b.pop();
+                    }
+                }
+            }
+
+            if (previousCount > 0 && bubbles.length === 0 && !isVortexActive) {
+                setTimeout(triggerClearSequence, 300);
+            }
+        }
+
+        canvas.addEventListener('click', (e) => handlePop(e.clientX, e.clientY));
+        canvas.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            customCursor.style.display = 'block';
+            customCursor.style.left = touch.clientX + 'px';
+            customCursor.style.top = touch.clientY + 'px';
+            handlePop(touch.clientX, touch.clientY);
+        }, { passive: true });
+
+        document.getElementById('vortexBtn').addEventListener('click', () => {
+            if (bubbles.length === 0 || isVortexActive) return;
+            initAudio();
+            playVortexSound();
+            isVortexActive = true;
+        });
+
+        function triggerClearSequence() {
+            if (window.confetti) {
+                confetti({
+                    particleCount: 140,
+                    spread: 85,
+                    origin: { y: 0.6 }
+                });
+            }
+            document.getElementById('clearModal').classList.add('active');
+        }
+
+        function showFortuneModal() {
+            const randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+            document.getElementById('fortuneText').textContent = randomFortune;
+            document.getElementById('fortuneModal').classList.add('active');
+        }
+
+        document.getElementById('closeFortuneBtn').addEventListener('click', () => {
+            document.getElementById('fortuneModal').classList.remove('active');
+        });
+
+        document.getElementById('saveCheerBtn').addEventListener('click', () => {
+            const cheerInput = document.getElementById('cheerInput');
+            const text = cheerInput.value.trim();
+
+            if (text !== '') {
+                const cardContainer = document.getElementById('cheerCardContainer');
+                const card = document.createElement('div');
+                card.className = 'cheer-card';
+                card.innerHTML = `🌿 ${escapeHtml(text)}`;
+                cardContainer.appendChild(card);
+                cheerInput.value = '';
+            }
+
+            document.getElementById('clearModal').classList.remove('active');
+        });
+
+        document.getElementById('bgmToggleBtn').addEventListener('click', toggleBGM);
+
+        function getDiaryData() {
+            const data = localStorage.getItem('bamboo_stress_diary');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveToDiary(text, emotion) {
+            const diary = getDiaryData();
+            diary.push({
+                text: text,
+                emotion: emotion,
+                date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            localStorage.setItem('bamboo_stress_diary', JSON.stringify(diary));
+        }
+
+        document.getElementById('diaryBtn').addEventListener('click', () => {
+            initAudio();
+            const diary = getDiaryData();
+            const diaryList = document.getElementById('diaryList');
+            document.getElementById('totalPoppedCount').textContent = diary.length;
+
+            diaryList.innerHTML = '';
+            if (diary.length === 0) {
+                diaryList.innerHTML = '<div style="text-align:center; opacity:0.6; padding:20px;">아직 정화한 고민이 없습니다.</div>';
+            } else {
+                diary.slice().reverse().forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'diary-item';
+                    div.innerHTML = `
+                        <span>${escapeHtml(item.text)}</span>
+                        <span style="opacity:0.5; font-size:0.75rem;">${item.date}</span>
+                    `;
+                    diaryList.appendChild(div);
+                });
+            }
+
+            document.getElementById('diaryModal').classList.add('active');
+        });
+
+        document.getElementById('closeDiaryBtn').addEventListener('click', () => {
+            document.getElementById('diaryModal').classList.remove('active');
+        });
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
